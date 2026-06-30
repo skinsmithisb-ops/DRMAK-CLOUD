@@ -79,6 +79,10 @@ export default function InventoryReportPage() {
             const stockEntries = entriesSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as StockEntry)) || [];
             console.log('Stock Entries found:', stockEntries.length);
 
+            const billingRecordsRef = collection(firestore, 'billingRecords');
+            const billingSnapshot = await getDocs(billingRecordsRef);
+            const billingRecords = billingSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as any)) || [];
+
             let syncCount = 0;
             let recoveryCount = 0;
             const supplierUpdates: Record<string, SupplierProduct[]> = {};
@@ -112,13 +116,22 @@ export default function InventoryReportPage() {
                     return acc + (Number(match?.totalQty) || 0);
                 }, 0);
 
+                const soldQty = billingRecords.reduce((acc, record) => {
+                    const matches = record.items?.filter((item: any) => 
+                        item.type === 'pharmacy' && 
+                        (item.name || '').trim().toLowerCase() === nameKey
+                    ) || [];
+                    const recordSold = matches.reduce((sum: number, item: any) => sum + (Number(item.qty) || 0), 0);
+                    return acc + recordSold;
+                }, 0);
+
                 // For currentMax, if we have multiple pi items with same name, we should SUM them to be safe, 
                 // but the system usually expects 1:1. However, to fix "zero" issues, we'll take the MAX + any orphans.
                 const sameNamePis = pharmacyItems.filter(i => (i.productName || i.name || '').trim().toLowerCase() === nameKey);
                 const piQty = sameNamePis.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
                 
                 const currentMax = Math.max(piQty, Number(foundSp?.quantity || 0));
-                const finalQty = Math.max(currentMax, historicalQty); 
+                const finalQty = historicalQty > 0 ? Math.max(0, historicalQty - soldQty) : currentMax; 
                 
                 const finalSelling = Math.max(Number(pi?.sellingPrice || 0), Number(foundSp?.sellingPrice || 0));
                 const finalRack = pi?.rack || foundSp?.rack || '';

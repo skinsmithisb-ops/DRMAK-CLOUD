@@ -44,7 +44,8 @@ import {
     Settings2,
     Coins,
     Printer,
-    CheckCircle2
+    CheckCircle2,
+    RefreshCcw
 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -106,10 +107,11 @@ import {
     limit,
     doc,
     setDoc,
-    deleteDoc
+    deleteDoc,
+    getDocs
 } from 'firebase/firestore';
-import type { Appointment, Patient, Doctor, BillingRecord, Lead, User, DailyPosting, SocialReport, AdminTaskTemplate, SocialReach, SocialSettings, DesignerWork, PharmacyItem, SocialCost, SocialROAS } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, useUser, useDoc } from '@/firebase';
+import type { Appointment, Patient, Doctor, BillingRecord, Lead, User, DailyPosting, SocialReport, AdminTaskTemplate, SocialReach, SocialSettings, DesignerWork, PharmacyItem, Supplier, SupplierProduct, StockEntry, SocialCost, SocialROAS } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, useUser, useDoc } from '@/firebase';
 import { useSearch } from '@/context/SearchProvider';
 import { add, format, startOfDay, endOfDay, isSameMonth, isSameYear, startOfMonth, startOfYear, isWithinInterval } from 'date-fns';
 import { DatePicker } from '@/components/DatePicker';
@@ -1444,6 +1446,135 @@ const AdminDashboard = () => {
 
     const isLoading = appointmentsLoading || doctorsLoading || patientsLoading || billingLoading || expensesLoading || prescriptionsLoading;
 
+    const [isSyncing, setIsSyncing] = React.useState(false);
+    const { toast } = useToast();
+
+    const handleDeepSync = async () => {
+        if (!firestore) return;
+        setIsSyncing(true);
+        toast({ title: 'Syncing...', description: 'Performing deep-audit and reconciling all inventory & financial data...' });
+
+        try {
+            // 1. Fetch all suppliers
+            const suppliersRef = collection(firestore, 'suppliers');
+            const suppliersSnapshot = await getDocs(suppliersRef);
+            const suppliersList = suppliersSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as Supplier)) || [];
+
+            // 2. Fetch all pharmacyItems
+            const pharmacyRef = collection(firestore, 'pharmacyItems');
+            const pharmacySnapshot = await getDocs(pharmacyRef);
+            const pharmacyItemsList = pharmacySnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as PharmacyItem)) || [];
+
+            // 3. Fetch all stockEntries
+            const stockEntriesRef = collection(firestore, 'stockEntries');
+            const entriesSnapshot = await getDocs(stockEntriesRef);
+            const stockEntries = entriesSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as StockEntry)) || [];
+
+            // 4. Fetch all billingRecords
+            const billingRecordsRef = collection(firestore, 'billingRecords');
+            const billingSnapshot = await getDocs(billingRecordsRef);
+            const billingRecordsList = billingSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as any)) || [];
+
+            let syncCount = 0;
+            const supplierUpdates: Record<string, SupplierProduct[]> = {};
+            const pharmacyUpdates: Array<{ id: string; data: any }> = [];
+            const pharmacyCreates: Array<any> = [];
+
+            const allProductNames = new Set<string>();
+            pharmacyItemsList.forEach(pi => allProductNames.add((pi.productName || pi.name || '').trim().toLowerCase()));
+            suppliersList.forEach(s => s.products?.forEach(p => allProductNames.add(p.name.trim().toLowerCase())));
+            stockEntries.forEach(entry => entry.items?.forEach(item => {
+                if (item.itemName) allProductNames.add(item.itemName.trim().toLowerCase());
+            }));
+
+            allProductNames.forEach(nameKey => {
+                const pi = pharmacyItemsList.find(i => (i.productName || i.name || '').trim().toLowerCase() === nameKey);
+                
+                let foundSp: SupplierProduct | null = null;
+                let foundSup: Supplier | null = null;
+                suppliersList.forEach(s => {
+                    const p = s.products?.find(product => product.name.trim().toLowerCase() === nameKey);
+                    if (p) {
+                        foundSp = p;
+                        foundSup = s;
+                    }
+                });
+
+                // Calculate total quantity from stock entries
+                const historicalQty = stockEntries.reduce((acc, entry) => {
+                    const match = entry.items?.find(item => (item.itemName || '').trim().toLowerCase() === nameKey);
+                    return acc + (Number(match?.totalQty) || 0);
+                }, 0);
+
+                // Calculate total quantity sold
+                const soldQty = billingRecordsList.reduce((acc, record) => {
+                    const matches = record.items?.filter((item: any) => 
+                        item.type === 'pharmacy' && 
+                        (item.name || '').trim().toLowerCase() === nameKey
+                    ) || [];
+                    const recordSold = matches.reduce((sum: number, item: any) => sum + (Number(item.qty) || 0), 0);
+                    return acc + recordSold;
+                }, 0);
+
+                const sameNamePis = pharmacyItemsList.filter(i => (i.productName || i.name || '').trim().toLowerCase() === nameKey);
+                const piQty = sameNamePis.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+                const currentMax = Math.max(piQty, Number(foundSp?.quantity || 0));
+
+                // Reconcile: if there are stock entries, trust historicalQty - soldQty.
+                // Otherwise fallback to currentMax.
+                const finalQty = historicalQty > 0 ? Math.max(0, historicalQty - soldQty) : currentMax;
+                const finalSelling = Math.max(Number(pi?.sellingPrice || 0), Number(foundSp?.sellingPrice || 0));
+                const finalRack = pi?.rack || foundSp?.rack || '';
+
+                if (pi && foundSp && foundSup) {
+                    const needsSupUpdate = foundSp.quantity !== finalQty;
+                    const needsPiUpdate = pi.quantity !== finalQty;
+
+                    if (needsSupUpdate) {
+                        if (!supplierUpdates[foundSup.id]) supplierUpdates[foundSup.id] = [...(foundSup.products || [])];
+                        const idx = supplierUpdates[foundSup.id].findIndex(p => p.name.trim().toLowerCase() === nameKey);
+                        if (idx > -1) {
+                            supplierUpdates[foundSup.id][idx] = { ...supplierUpdates[foundSup.id][idx], quantity: finalQty, sellingPrice: finalSelling, rack: finalRack };
+                            syncCount++;
+                        }
+                    }
+                    if (needsPiUpdate) {
+                        sameNamePis.forEach(item => {
+                            pharmacyUpdates.push({ id: item.id, data: { quantity: finalQty, sellingPrice: finalSelling, rack: finalRack } });
+                            syncCount++;
+                        });
+                    }
+                } else if (pi && (!foundSp || !foundSup)) {
+                    const supplier = suppliersList.find(s => s.id === pi.supplierId || s.name === pi.supplier) || suppliersList[0];
+                    if (supplier) {
+                        if (!supplierUpdates[supplier.id]) supplierUpdates[supplier.id] = [...(supplier.products || [])];
+                        supplierUpdates[supplier.id].push({ id: pi.id, name: pi.productName || pi.name || '', sellingPrice: finalSelling, quantity: finalQty, rack: finalRack, minThreshold: 0 });
+                        syncCount++;
+                    }
+                } else if (!pi && foundSp && foundSup) {
+                    pharmacyCreates.push({
+                        id: foundSp.id, productName: foundSp.name, sellingPrice: finalSelling, quantity: finalQty, rack: finalRack,
+                        supplier: foundSup.name, supplierId: foundSup.id, active: true, category: foundSup.category || 'General'
+                    });
+                    syncCount++;
+                }
+            });
+
+            const promises: any[] = [];
+            Object.entries(supplierUpdates).forEach(([supId, products]) => promises.push(updateDocumentNonBlocking(doc(firestore, 'suppliers', supId), { products })));
+            pharmacyUpdates.forEach(u => promises.push(updateDocumentNonBlocking(doc(firestore, 'pharmacyItems', u.id), u.data)));
+            pharmacyCreates.forEach(c => promises.push(setDocumentNonBlocking(doc(firestore, 'pharmacyItems', c.id), c, { merge: true })));
+
+            await Promise.all(promises);
+            toast({ title: 'Reconciliation Complete', description: `Successfully reconciled ${syncCount} items with sales and purchase records.` });
+        } catch (error: any) {
+            console.error('Deep Sync Error:', error);
+            toast({ variant: 'destructive', title: 'Sync Failed', description: error.message });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const enrichedAppointments = React.useMemo(() => {
         if (!appointments || !doctors || !patients) return [];
 
@@ -1609,6 +1740,15 @@ const AdminDashboard = () => {
                     <p className="text-sm text-muted-foreground">Detailed metrics for your selected period</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button 
+                        disabled={isSyncing} 
+                        onClick={handleDeepSync}
+                        variant="secondary"
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold shadow-sm h-10 shrink-0"
+                    >
+                        {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+                        {isSyncing ? 'Syncing...' : 'Sync Inventory'}
+                    </Button>
                     <Tabs value={periodMode} onValueChange={(v: any) => setPeriodMode(v)} className="w-[400px]">
                         <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="day">Day</TabsTrigger>
