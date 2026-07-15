@@ -42,7 +42,8 @@ import {
     ShieldAlert,
     CheckCircle2,
     Smartphone,
-    HandCoins
+    HandCoins,
+    Boxes
 } from 'lucide-react';
 import { format, isToday, startOfDay, endOfDay, isSameDay, isSameMonth, isSameYear, isWithinInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -57,6 +58,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/DatePicker";
 import { safeDate, safeFormat } from '@/lib/safe-date';
+import type { Supplier, PharmacyItem } from '@/lib/types';
 
 interface BillItem {
     id: string;
@@ -116,6 +118,74 @@ export default function TodaySummaryPage() {
     }, [firestore]);
 
     const { data: allClosings, isLoading: allClosingsLoading } = useCollection<DailyClosing>(allClosingsQuery);
+
+    const suppliersRef = useMemoFirebase(() => firestore ? collection(firestore, 'suppliers') : null, [firestore]);
+    const { data: suppliers, isLoading: isSuppliersLoading } = useCollection<Supplier>(suppliersRef);
+
+    const pharmacyRef = useMemoFirebase(() => firestore ? collection(firestore, 'pharmacyItems') : null, [firestore]);
+    const { data: pharmacyItems, isLoading: isPharmacyLoading } = useCollection<PharmacyItem>(pharmacyRef);
+
+    const inventoryItems = React.useMemo(() => {
+        if (!suppliers || !pharmacyItems) return [];
+        const items: any[] = [];
+        const processedNames = new Set<string>();
+
+        // 1. Process Master Ledger (Suppliers)
+        suppliers.forEach(s => {
+            s.products?.forEach(p => {
+                const nameKey = p.name.trim().toLowerCase();
+                // Find matching item in Pharmacy POS
+                const piMatch = pharmacyItems.find(pi => (pi.productName || pi.name || '').trim().toLowerCase() === nameKey);
+                
+                // Promote the maximum quantity, selling price, and purchase price
+                const currentQty = Math.max(Number(p.quantity || 0), Number(piMatch?.quantity || 0));
+                const currentSelling = Math.max(Number(p.sellingPrice || 0), Number(piMatch?.sellingPrice || 0));
+                const currentPurchase = Math.max(Number(p.price || 0), Number(piMatch?.purchasePrice || 0));
+
+                items.push({ 
+                    ...p, 
+                    quantity: currentQty,
+                    sellingPrice: currentSelling,
+                    purchasePrice: currentPurchase,
+                    supplierName: s.name, 
+                    supplierId: s.id,
+                    rack: p.rack || piMatch?.rack || '',
+                    category: s.category || 'General'
+                });
+                processedNames.add(nameKey);
+            });
+        });
+
+        // 2. Catch orphan items in Pharmacy POS that don't exist in Master Ledger
+        pharmacyItems.forEach(pi => {
+            const nameKey = (pi.productName || pi.name || '').trim().toLowerCase();
+            if (nameKey && !processedNames.has(nameKey)) {
+                items.push({
+                    id: pi.id,
+                    name: pi.productName || pi.name || 'Unnamed Product',
+                    quantity: pi.quantity || 0,
+                    sellingPrice: pi.sellingPrice || 0,
+                    purchasePrice: pi.purchasePrice || 0,
+                    supplierName: pi.supplier || 'Unlinked',
+                    supplierId: pi.supplierId || 'unlinked',
+                    rack: pi.rack || '',
+                    minThreshold: 0,
+                    category: pi.category || 'General'
+                });
+                processedNames.add(nameKey);
+            }
+        });
+
+        return items;
+    }, [suppliers, pharmacyItems]);
+
+    const totalInventoryValueSelling = React.useMemo(() => {
+        return inventoryItems.reduce((acc, item) => acc + (Number(item.sellingPrice || 0) * Number(item.quantity || 0)), 0);
+    }, [inventoryItems]);
+
+    const totalInventoryValuePurchase = React.useMemo(() => {
+        return inventoryItems.reduce((acc, item) => acc + (Number(item.purchasePrice || 0) * Number(item.quantity || 0)), 0);
+    }, [inventoryItems]);
 
     const [sessionUnlocked, setSessionUnlocked] = React.useState(false);
 
@@ -305,6 +375,12 @@ export default function TodaySummaryPage() {
             // Handover History
             totalPhysicalCash: totalPhysicalCashHandover,
             totalTax,
+            // Total Pharmacy/Inventory Sales
+            totalSoldInventory: filteredRecords.reduce((sum, record) => {
+                const pharmacyItemsSum = record.items?.filter(item => item.type === 'pharmacy')
+                    .reduce((pSum, item) => pSum + (Number(item.price || 0) * Number(item.qty || 0)), 0) || 0;
+                return sum + pharmacyItemsSum;
+            }, 0),
         };
     }, [filteredRecords, filteredExpenses, filteredClosings]);
 
@@ -339,7 +415,7 @@ export default function TodaySummaryPage() {
         window.print();
     };
 
-    if (billingLoading || closingsLoading || expensesLoading || allClosingsLoading) {
+    if (billingLoading || closingsLoading || expensesLoading || allClosingsLoading || isSuppliersLoading || isPharmacyLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-[400px] gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -579,6 +655,42 @@ export default function TodaySummaryPage() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Inventory & Stock Summary */}
+                <Card className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-none shadow-xl shadow-indigo-100/10 rounded-[2rem] overflow-hidden col-span-1 md:col-span-3 lg:col-span-5">
+                    <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between text-white gap-6">
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className="p-3 bg-white/10 rounded-2xl">
+                                <Boxes className="h-8 w-8 text-indigo-400" />
+                            </div>
+                            <div className="space-y-1">
+                                <h4 className="text-lg font-black tracking-tight text-white">Inventory & Stock Summary</h4>
+                                <p className="text-xs font-bold text-slate-400 tracking-tight">
+                                    Real-time tracking of pharmacy sales and remaining active inventory value.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-8 md:gap-12 w-full md:w-auto justify-between md:justify-end">
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    {periodMode === 'Day' ? 'Sold Today (Pharmacy)' : 'Sold in Period'}
+                                </span>
+                                <div className="text-2xl font-black text-emerald-400 tracking-tight">
+                                    {stats.totalSoldInventory.toLocaleString()} <span className="text-xs font-bold opacity-60">PKR</span>
+                                </div>
+                            </div>
+                            <div className="h-10 w-px bg-white/10 hidden md:block" />
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Remaining Stock Value</span>
+                                <div className="text-2xl font-black text-indigo-300 tracking-tight">
+                                    {totalInventoryValueSelling.toLocaleString()} <span className="text-xs font-bold opacity-60">PKR</span>
+                                </div>
+                                <div className="text-[9px] text-slate-500 font-bold">Cost Value: {totalInventoryValuePurchase.toLocaleString()} PKR</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Card className="border-none shadow-xl shadow-slate-100/50 rounded-[2rem] overflow-hidden group hover:scale-[1.02] transition-all bg-white border border-slate-100/50">
                     <CardHeader className="pb-2">
