@@ -77,6 +77,7 @@ interface BillingRecord {
     grandTotal: number;
     paymentMethod: string;
     timestamp: string; // ISO String
+    taxAmount?: number;
 }
 
 interface DailyClosing {
@@ -135,7 +136,7 @@ export default function TodaySummaryPage() {
             s.products?.forEach(p => {
                 const nameKey = p.name.trim().toLowerCase();
                 // Find matching item in Pharmacy POS
-                const piMatch = pharmacyItems.find(pi => (pi.productName || pi.name || '').trim().toLowerCase() === nameKey);
+                const piMatch = pharmacyItems.find(pi => (pi.productName || (pi as any).name || '').trim().toLowerCase() === nameKey);
                 
                 // Promote the maximum quantity, selling price, and purchase price
                 const currentQty = Math.max(Number(p.quantity || 0), Number(piMatch?.quantity || 0));
@@ -158,11 +159,11 @@ export default function TodaySummaryPage() {
 
         // 2. Catch orphan items in Pharmacy POS that don't exist in Master Ledger
         pharmacyItems.forEach(pi => {
-            const nameKey = (pi.productName || pi.name || '').trim().toLowerCase();
+            const nameKey = (pi.productName || (pi as any).name || '').trim().toLowerCase();
             if (nameKey && !processedNames.has(nameKey)) {
                 items.push({
                     id: pi.id,
-                    name: pi.productName || pi.name || 'Unnamed Product',
+                    name: pi.productName || (pi as any).name || 'Unnamed Product',
                     quantity: pi.quantity || 0,
                     sellingPrice: pi.sellingPrice || 0,
                     purchasePrice: pi.purchasePrice || 0,
