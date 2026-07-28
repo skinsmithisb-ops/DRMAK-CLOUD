@@ -3632,13 +3632,17 @@ export default function Dashboard() {
         [userEmail, userRole]);
 
     React.useEffect(() => {
-        if (!isUserLoading && userRole && viewMode === 'none') {
-            // Operations Manager always goes straight to the organization dashboard
+        if (!isUserLoading && userRole) {
+            // Operations Manager only ever has the clinic workstation — force it on
+            // every load regardless of whatever viewMode was previously stored, so
+            // they always land directly on it without needing to click a switcher.
             if (userRole === 'Operations Manager') {
-                setViewMode('clinic');
+                if (viewMode !== 'clinic') setViewMode('clinic');
                 return;
             }
+        }
 
+        if (!isUserLoading && userRole && viewMode === 'none') {
             if (!isSuperUser) {
                 if (hasClinicAccess && !hasOrgAccess && !hasReportsAccess) {
                     setViewMode('clinic');

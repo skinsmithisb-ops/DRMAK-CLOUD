@@ -121,7 +121,9 @@ const CATEGORIES = [
 
 const PAYMENT_METHODS = [
     "Cash",
-    "Card"
+    "Card",
+    "Bank Transfer",
+    "Online"
 ];
 
 export default function DailyExpensesPage() {
@@ -138,6 +140,7 @@ export default function DailyExpensesPage() {
     const [amount, setAmount] = React.useState<string>('');
     const [category, setCategory] = React.useState<string>('Supplies');
     const [description, setDescription] = React.useState<string>('');
+    const [paymentMethod, setPaymentMethod] = React.useState<string>('Cash');
     const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
     const [viewMode, setViewMode] = React.useState<'day' | 'week' | 'month' | 'history'>('day');
 
@@ -238,6 +241,7 @@ export default function DailyExpensesPage() {
         setAmount('');
         setCategory('Supplies');
         setDescription('');
+        setPaymentMethod('Cash');
         setEditingId(null);
     };
 
@@ -257,7 +261,7 @@ export default function DailyExpensesPage() {
                 amount: Number(amount),
                 category,
                 description,
-                paymentMethod: 'Cash',
+                paymentMethod,
                 timestamp: new Date().toISOString(),
                 addedBy: user?.email || 'Unknown'
             });
@@ -273,6 +277,7 @@ export default function DailyExpensesPage() {
         setAmount(expense.amount.toString());
         setCategory(expense.category);
         setDescription(expense.description);
+        setPaymentMethod(expense.paymentMethod || 'Cash');
         setEditingId(expense.id!);
         setIsEditOpen(true);
     };
@@ -294,7 +299,7 @@ export default function DailyExpensesPage() {
                 amount: Number(amount),
                 category,
                 description,
-                paymentMethod: 'Cash',
+                paymentMethod,
             });
             toast({ title: 'Success', description: 'Expense updated successfully.' });
             setIsEditOpen(false);
@@ -391,6 +396,16 @@ export default function DailyExpensesPage() {
                                     {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label className="text-xs font-black uppercase text-slate-500 ml-1">Paid Via</Label>
+                            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-none"><SelectValue placeholder="Select Payment Method" /></SelectTrigger>
+                                <SelectContent>
+                                    {PAYMENT_METHODS.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-slate-400 ml-1">Only "Cash" is deducted from the physical drawer handover. Bank/Card/Online payments (e.g. utility bills) won't affect today's cash count.</p>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="description" className="text-xs font-black uppercase text-slate-500 ml-1">Reason / Description</Label>
@@ -516,6 +531,15 @@ export default function DailyExpensesPage() {
                             </Select>
                         </div>
                         <div className="grid gap-2">
+                            <Label className="text-xs font-black uppercase text-slate-500 ml-1">Paid Via</Label>
+                            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-none"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {PAYMENT_METHODS.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
                             <Label htmlFor="edit-description" className="text-xs font-black uppercase text-slate-500 ml-1">Description</Label>
                             <Textarea id="edit-description" className="rounded-xl min-h-[100px] bg-slate-50 border-none focus-visible:ring-indigo-500" value={description} onChange={e => setDescription(e.target.value)} />
                         </div>
@@ -566,6 +590,7 @@ export default function DailyExpensesPage() {
                                             <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest pl-6">Time</TableHead>
                                             <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Classification</TableHead>
                                             <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Operational Detail</TableHead>
+                                            <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-widest">Paid Via</TableHead>
                                             <TableHead className="text-right font-black text-slate-500 text-[10px] uppercase tracking-widest pr-6">Value (Rs)</TableHead>
                                             <TableHead className="w-[80px]"></TableHead>
                                         </TableRow>
@@ -583,6 +608,11 @@ export default function DailyExpensesPage() {
                                                 </TableCell>
                                                 <TableCell className="font-medium text-slate-700 max-w-[300px] truncate">
                                                     {expense.description}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={`font-bold text-[10px] rounded-lg px-2 ${(expense.paymentMethod || 'Cash').toLowerCase().includes('cash') ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-sky-200 text-sky-700 bg-sky-50'}`}>
+                                                        {expense.paymentMethod || 'Cash'}
+                                                    </Badge>
                                                 </TableCell>
 
                                                 <TableCell className="text-right pr-6">

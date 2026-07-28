@@ -393,14 +393,18 @@ const NavContent = () => {
     const hasRoleSpecificNav = ROLE_SPECIFIC_ROLES.includes(userProfile?.role || '');
     const showAdminGroupedNav = isMainAdmin && !hasRoleSpecificNav;
 
+    // Operations Manager only ever operates the clinic workstation — always show
+    // the full operational nav regardless of whatever viewMode was last stored.
+    const isOperationsManager = userProfile?.role === 'Operations Manager';
+
     // Hide sidebar completely for Main Admin if no viewMode is selected
-    if (showAdminGroupedNav && viewMode === 'none') {
+    if (showAdminGroupedNav && viewMode === 'none' && !isOperationsManager) {
         return null;
     }
 
     // Main Admin View Logic
     if (showAdminGroupedNav) {
-        const activeGroups = viewMode === 'clinic' ? clinicGroups : (viewMode === 'reports' ? reportsGroups : organizationGroups);
+        const activeGroups = isOperationsManager ? clinicGroups : (viewMode === 'clinic' ? clinicGroups : (viewMode === 'reports' ? reportsGroups : organizationGroups));
 
         return (
             <div className="space-y-6">
