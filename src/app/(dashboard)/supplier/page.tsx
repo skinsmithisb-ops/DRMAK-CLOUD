@@ -181,6 +181,17 @@ export default function SupplierPage() {
         return { total, active, inactive: total - active, categories };
     }, [suppliers]);
 
+    // Total business given to each supplier = sum of all "Bill" (stock/medicine purchase) transactions
+    const totalBusinessBySupplier = React.useMemo(() => {
+        const map: Record<string, number> = {};
+        transactions?.forEach(tx => {
+            if (tx.type === 'Bill') {
+                map[tx.supplierId] = (map[tx.supplierId] || 0) + Number(tx.amount || 0);
+            }
+        });
+        return map;
+    }, [transactions]);
+
     const openAddDialog = () => {
         setEditingSupplier(null);
         setFormData(emptyForm());
@@ -439,6 +450,7 @@ export default function SupplierPage() {
                     <TableHead>Contact Info</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Clearing Logic</TableHead>
+                    <TableHead>Total Business</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -446,7 +458,7 @@ export default function SupplierPage() {
             <TableBody>
                 {data.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                             <div className="flex flex-col items-center gap-2">
                                 <Truck className="h-8 w-8 opacity-30" />
                                 <p className="font-medium">No suppliers found</p>
@@ -524,6 +536,15 @@ export default function SupplierPage() {
                                         </div>
                                     )}
                                 </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                    <Receipt className="h-3.5 w-3.5 text-teal-600" />
+                                    <span className="text-sm font-black text-teal-700">
+                                        PKR {(totalBusinessBySupplier[supplier.id] || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">Total medicines purchased</p>
                             </TableCell>
                             <TableCell>
                                 <Badge
