@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -276,8 +276,13 @@ export default function InventoryPage() {
                 });
                 updateDocumentNonBlocking(doc(firestore, 'suppliers', supplier.id), { products: newProducts });
                 
+                // Find matching item in Pharmacy POS by name to get its correct document ID
+                const nameKey = editingItem.name.trim().toLowerCase();
+                const piMatch = pharmacyItems?.find(pi => (pi.productName || pi.name || '').trim().toLowerCase() === nameKey);
+                const targetPharmacyId = piMatch ? piMatch.id : editingItem.id;
+
                 // Sync to pharmacyItems for POS
-                const pDocRef = doc(firestore, 'pharmacyItems', editingItem.id);
+                const pDocRef = doc(firestore, 'pharmacyItems', targetPharmacyId);
                 setDocumentNonBlocking(pDocRef, {
                     productName: editingItem.name,
                     sellingPrice: numSellingPrice,
@@ -299,7 +304,7 @@ export default function InventoryPage() {
     const handleDelete = (id: string) => {
         if (!firestore) return;
         if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-            deleteDocumentNonBlocking(doc(firestore, 'pharmacy', id));
+            deleteDocumentNonBlocking(doc(firestore, 'pharmacyItems', id));
             toast({ title: 'Item Deleted', description: 'The item has been removed from inventory.' });
         }
     };
