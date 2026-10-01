@@ -35,6 +35,14 @@ import { deleteDocumentNonBlocking } from '@/firebase';
 import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
 export default function InvoiceHistoryPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <InvoiceHistoryContent />
+    </React.Suspense>
+  );
+}
+
+function InvoiceHistoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = searchParams.get('id');

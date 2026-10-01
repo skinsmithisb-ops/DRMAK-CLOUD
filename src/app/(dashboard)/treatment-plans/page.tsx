@@ -41,6 +41,14 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 export default function TreatmentPlanPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <TreatmentPlanContent />
+    </React.Suspense>
+  );
+}
+
+function TreatmentPlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = searchParams.get('id');

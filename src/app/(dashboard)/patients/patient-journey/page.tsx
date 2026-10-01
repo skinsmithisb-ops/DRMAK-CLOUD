@@ -21,6 +21,14 @@ import { DateRange } from 'react-day-picker';
 import { startOfMonth } from 'date-fns';
 
 export default function PatientJourneyPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <PatientJourneyContent />
+    </React.Suspense>
+  );
+}
+
+function PatientJourneyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = searchParams.get('id');

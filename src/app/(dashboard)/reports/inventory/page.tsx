@@ -101,8 +101,8 @@ export default function InventoryReportPage() {
             allProductNames.forEach(nameKey => {
                 const pi = pharmacyItems.find(i => (i.productName || i.name || '').trim().toLowerCase() === nameKey);
                 
-                let foundSp: SupplierProduct | null = null;
-                let foundSup: Supplier | null = null;
+                let foundSp: any = null;
+                let foundSup: any = null;
                 suppliers.forEach(s => {
                     const p = s.products?.find(product => product.name.trim().toLowerCase() === nameKey);
                     if (p) {

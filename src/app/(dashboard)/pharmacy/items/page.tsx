@@ -16,6 +16,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, PlusCircle, Loader2, Search, Edit, Trash2, Printer, FileDown } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -128,7 +129,7 @@ const PharmacyFormDialog = ({ open, onOpenChange, item, mode, suppliers }: { ope
                     const sup = suppliers?.find(s => s.id === formData.supplierId);
                     if (sup) {
                         const newProduct = {
-                            id: newDocRef.id,
+                            id: (newDocRef && typeof newDocRef === 'object' && 'id' in newDocRef) ? (newDocRef as any).id : Math.random().toString(36).substring(7),
                             name: formData.productName || '',
                             price: formData.purchasePrice || 0,
                             sellingPrice: formData.sellingPrice || 0,

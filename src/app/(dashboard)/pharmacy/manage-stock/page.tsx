@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Search, Loader2, Upload, FileUp, FileText, Printer, Edit, Pencil, Eye } from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import type { StockEntry, Supplier, PharmacyItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -119,13 +119,13 @@ const StockEntryDialog = ({ open, onOpenChange, suppliers }: { open: boolean, on
                     await setDocumentNonBlocking(pDocRef, {
                         id: targetProduct.id,
                         productName: targetProduct.name,
-                        quantity: targetProduct.quantity, // This is the new total for that product in supplier doc
-                        purchasePrice: targetProduct.price,
-                        sellingPrice: targetProduct.sellingPrice || (targetProduct.price * 1.2),
-                        supplier: selectedDistributor.name,
-                        supplierId: selectedDistributor.id,
+                        quantity: targetProduct.quantity,
+                        purchasePrice: targetProduct.price || 0,
+                        sellingPrice: targetProduct.sellingPrice || ((targetProduct.price || 0) * 1.2),
+                        supplier: selectedDistributor?.name || '',
+                        supplierId: selectedDistributor?.id || '',
                         active: true,
-                        category: targetProduct.category,
+                        category: targetProduct.category || 'Medicine',
                         rack: targetProduct.rack || ''
                     }, { merge: true });
                 }

@@ -1157,15 +1157,15 @@ export default function FinancialReportPage() {
                                             </div>
                                             <div className="space-y-2 border-l border-slate-800 pl-10">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Operating Expenses</p>
-                                                <p className="text-3xl font-black text-rose-500">Rs {strategicMetrics?.totalOpEx.toLocaleString()}</p>
+                                                <p className="text-3xl font-black text-rose-500">Rs {(strategicMetrics?.totalOpEx ?? 0).toLocaleString()}</p>
                                             </div>
                                             <div className="space-y-2 border-l border-slate-800 pl-10">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">EBITDA</p>
-                                                <p className="text-3xl font-black text-emerald-400">Rs {strategicMetrics?.ebitda.toLocaleString()}</p>
+                                                <p className="text-3xl font-black text-emerald-400">Rs {(strategicMetrics?.ebitda ?? 0).toLocaleString()}</p>
                                             </div>
                                             <div className="space-y-2 border-l border-slate-800 pl-10">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Net Profit</p>
-                                                <p className="text-3xl font-black text-indigo-400">Rs {strategicMetrics?.netProfit.toLocaleString()}</p>
+                                                <p className="text-3xl font-black text-indigo-400">Rs {(strategicMetrics?.netProfit ?? 0).toLocaleString()}</p>
                                             </div>
                                         </div>
 
@@ -1187,14 +1187,14 @@ export default function FinancialReportPage() {
                                                         <span className="font-bold text-slate-300">Pharmacy</span>
                                                         <span className="font-black">Rs {filteredBilling.reduce((sum, b) => sum + (b.medicineCharges || 0), 0).toLocaleString()}</span>
                                                     </div>
-                                                    {strategicMetrics?.totalSocialRevenue > 0 && (
+                                                    {(strategicMetrics?.totalSocialRevenue ?? 0) > 0 && (
                                                         <div className="flex justify-between items-center bg-indigo-900/40 p-4 rounded-2xl border border-indigo-500/50 mt-4 relative overflow-hidden">
                                                             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/20 blur-2xl rounded-full -translate-y-12 translate-x-4" />
                                                             <div className="relative z-10 flex flex-col">
                                                                 <span className="font-black text-indigo-300 text-[10px] uppercase tracking-widest">Attributed to Social Team</span>
                                                                 <span className="font-bold text-white">Social Conversions</span>
                                                             </div>
-                                                            <span className="font-black text-indigo-400 text-lg relative z-10">Rs {strategicMetrics.totalSocialRevenue.toLocaleString()}</span>
+                                                            <span className="font-black text-indigo-400 text-lg relative z-10">Rs {(strategicMetrics?.totalSocialRevenue ?? 0).toLocaleString()}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1206,25 +1206,25 @@ export default function FinancialReportPage() {
                                                     <div className="bg-indigo-900/20 p-4 rounded-2xl border border-indigo-500/30 space-y-3">
                                                         <div className="flex justify-between items-center">
                                                             <span className="font-bold text-indigo-300">Social Marketing (Ads/PR)</span>
-                                                            <span className="font-black text-indigo-400">Rs {strategicMetrics?.totalSocialSpend.toLocaleString()}</span>
+                                                            <span className="font-black text-indigo-400">Rs {(strategicMetrics?.totalSocialSpend ?? 0).toLocaleString()}</span>
                                                         </div>
-                                                        {strategicMetrics?.totalSocialSpend > 0 && (
+                                                        {(strategicMetrics?.totalSocialSpend ?? 0) > 0 && (
                                                             <div className="grid grid-cols-2 gap-2 pl-2 border-l border-indigo-500/30">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-indigo-400/60">Ads</span>
-                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {strategicMetrics.socialSpendDetail.adSpend.toLocaleString()}</span>
+                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {(strategicMetrics?.socialSpendDetail?.adSpend ?? 0).toLocaleString()}</span>
                                                                 </div>
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-indigo-400/60">Boost</span>
-                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {strategicMetrics.socialSpendDetail.boostingSpend.toLocaleString()}</span>
+                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {(strategicMetrics?.socialSpendDetail?.boostingSpend ?? 0).toLocaleString()}</span>
                                                                 </div>
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-indigo-400/60">PR</span>
-                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {strategicMetrics.socialSpendDetail.prSpend.toLocaleString()}</span>
+                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {(strategicMetrics?.socialSpendDetail?.prSpend ?? 0).toLocaleString()}</span>
                                                                 </div>
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-indigo-400/60">Misc</span>
-                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {strategicMetrics.socialSpendDetail.otherSpend.toLocaleString()}</span>
+                                                                    <span className="text-[11px] font-bold text-indigo-200">Rs {(strategicMetrics?.socialSpendDetail?.otherSpend ?? 0).toLocaleString()}</span>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1322,7 +1322,7 @@ export default function FinancialReportPage() {
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter Audit Window</p>
                           <DatePickerWithRange 
                               date={historyRange} 
-                              setDate={setHistoryRange} 
+                              onDateChange={setHistoryRange} 
                               className="bg-white rounded-xl shadow-sm border-slate-100" 
                           />
                       </div>

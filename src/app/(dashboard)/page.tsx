@@ -967,7 +967,7 @@ const AdminDailyIntelligence = ({
     allExpenses: any[];
     appointments: (Appointment & { id: string })[];
     patients: (Patient & { id: string })[];
-    prescriptions: any[];
+    prescriptions?: any[];
     selectedDate?: Date;
     periodMode?: 'day' | 'month' | 'year';
     dateRange?: DateRange;
@@ -976,6 +976,7 @@ const AdminDailyIntelligence = ({
     const [showPurchases, setShowPurchases] = React.useState(false);
     const [showExpenses, setShowExpenses] = React.useState(false);
     const [showPrescriptions, setShowPrescriptions] = React.useState(false);
+    const router = useRouter();
 
     const patientsMap = React.useMemo(() => new Map(patients.map(p => [p.mobileNumber, p])), [patients]);
 
@@ -1476,7 +1477,7 @@ const AdminDashboard = () => {
             const billingRecordsList = billingSnapshot?.docs.map(d => ({ id: d.id, ...d.data() } as any)) || [];
 
             let syncCount = 0;
-            const supplierUpdates: Record<string, SupplierProduct[]> = {};
+            const supplierUpdates: Record<string, any[]> = {};
             const pharmacyUpdates: Array<{ id: string; data: any }> = [];
             const pharmacyCreates: Array<any> = [];
 
@@ -1490,8 +1491,8 @@ const AdminDashboard = () => {
             allProductNames.forEach(nameKey => {
                 const pi = pharmacyItemsList.find(i => (i.productName || i.name || '').trim().toLowerCase() === nameKey);
                 
-                let foundSp: SupplierProduct | null = null;
-                let foundSup: Supplier | null = null;
+                let foundSp: any = null;
+                let foundSup: any = null;
                 suppliersList.forEach(s => {
                     const p = s.products?.find(product => product.name.trim().toLowerCase() === nameKey);
                     if (p) {

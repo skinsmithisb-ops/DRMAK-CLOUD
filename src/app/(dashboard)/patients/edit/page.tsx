@@ -22,6 +22,14 @@ import { format, parseISO } from 'date-fns';
 import { AvatarUpload } from '@/components/profile/AvatarUpload';
 
 export default function PatientEditPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <PatientEditContent />
+    </React.Suspense>
+  );
+}
+
+function PatientEditContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = searchParams.get('id');

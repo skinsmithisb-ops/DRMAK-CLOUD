@@ -131,6 +131,7 @@ export type HealthRecord = {
 export type PharmacyItem = {
   id: string;
   productName: string;
+  name?: string;
   genericName?: string;
   barcode?: string;
   category: string;
@@ -438,13 +439,15 @@ export type SupplierType = 'Vendor' | 'Distributor';
 export type SupplierProduct = {
   id: string;
   name: string;
-  price: number; // Purchase Price
+  price?: number; // Purchase Price
+  purchasePrice?: number;
   sellingPrice: number;
   quantity: number;
   minThreshold: number;
   rack?: string;
   expiryDate?: string;
   alternatives?: string[]; // Array of product IDs
+  category?: string;
 };
 
 export type Supplier = {

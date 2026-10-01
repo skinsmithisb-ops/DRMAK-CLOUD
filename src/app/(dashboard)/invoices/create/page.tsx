@@ -19,6 +19,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { Loader2 } from 'lucide-react';
 
 export default function CreateInvoicePage() {
+    return (
+        <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+            <CreateInvoiceContent />
+        </React.Suspense>
+    );
+}
+
+function CreateInvoiceContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const patientId = searchParams.get('id');

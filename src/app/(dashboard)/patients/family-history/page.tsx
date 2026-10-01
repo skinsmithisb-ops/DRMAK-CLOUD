@@ -139,6 +139,14 @@ const FamilyHistoryFormDialog = ({ open, onOpenChange, patientId, familyMember }
 
 
 export default function FamilyHistoryPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <FamilyHistoryContent />
+    </React.Suspense>
+  );
+}
+
+function FamilyHistoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientId = searchParams.get('id');

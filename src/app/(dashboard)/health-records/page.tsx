@@ -39,6 +39,14 @@ const summaryTemplates = [
 ]
 
 export default function AddHealthRecordPage() {
+    return (
+        <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+            <AddHealthRecordContent />
+        </React.Suspense>
+    );
+}
+
+function AddHealthRecordContent() {
     const searchParams = useSearchParams();
     const patientId = searchParams.get('id');
     const firestore = useFirestore();

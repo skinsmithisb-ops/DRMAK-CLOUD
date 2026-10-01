@@ -77,7 +77,7 @@ import {
 import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { Supplier, SupplierProduct, SupplierType } from '@/lib/types';
+import type { Supplier, SupplierProduct, SupplierType, VendorTransaction } from '@/lib/types';
 import { uploadFile } from '@/firebase/storage';
 import { cn } from '@/lib/utils';
 
@@ -433,7 +433,7 @@ export default function SupplierPage() {
                 if (i !== idx) return p;
                 if (field === 'sellingPrice' || field === 'quantity' || field === 'minThreshold') {
                     if (value === '') return { ...p, [field]: undefined };
-                    const numVal = parseFloat(value);
+                    const numVal = parseFloat(String(value));
                     return { ...p, [field]: isNaN(numVal) ? 0 : numVal };
                 }
                 return { ...p, [field]: value };

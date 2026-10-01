@@ -301,6 +301,14 @@ function FollowUpBadge({ dateStr }: { dateStr: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PatientDetailsPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <PatientDetailsContent />
+    </React.Suspense>
+  );
+}
+
+function PatientDetailsContent() {
     const router = useRouter();
     const { toast } = useToast();
     const searchParams = useSearchParams();
